@@ -163,9 +163,11 @@ class ReActDataScienceAgent:
                 # Execute the code
                 execution_result = self.executor(action_input, self.session_id)
 
-                # Update session ID if we got a new one
                 if execution_result and "session_id" in execution_result:
-                    self.session_id = execution_result["session_id"]
+                    new_session_id = execution_result["session_id"]
+                    if self.session_id is not None and new_session_id != self.session_id:
+                        raise ValueError("Session ID changed unexpectedly")
+                    self.session_id = new_session_id
 
                 # Display results
                 print_rich_execution_result(
