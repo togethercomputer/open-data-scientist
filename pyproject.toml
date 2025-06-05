@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "open-data-scientist"
+version = "0.1.0"
+description = "ReAct Data Science Agent - AI-powered data analysis assistant"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+keywords = ["data-science", "ai", "react", "analysis", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "huggingface-hub>=0.32.1",
+    "ipython>=9.2.0",
+    "numpy>=2.2.6",
+    "pandas>=2.2.3",
+    "rich>=14.0.0",
+    "scipy>=1.15.3",
+    "together>=1.0.0",
+    "requests>=2.31.0",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+    "scikit-learn>=1.3.0",
+    "datasets>=3.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+open-data-scientist = "open_data_scientist.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/open-data-scientist"
+Repository = "https://github.com/yourusername/open-data-scientist"
+Issues = "https://github.com/yourusername/open-data-scientist/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["open_data_scientist"]

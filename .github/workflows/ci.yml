@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install test dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest httpx requests
+        pip install -e .
+
+    - name: Build Docker image
+      run: |
+        cd interpreter
+        docker build -t interpreter-test .
+
+    - name: Start container
+      run: |
+        cd interpreter
+        docker run -d --name interpreter-container -p 8123:8123 interpreter-test
+        
+    - name: Wait for container to be ready
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:8123/health; do sleep 2; done'
+
+    - name: Run functional tests
+      env:
+        TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
+      run: |
+        python -m pytest tests/test_functional.py -v
+        python -m pytest tests/test_executors.py -v
+        python -m pytest tests/test_agent_data_analysis.py -v
+
+    - name: Stop container
+      if: always()
+      run: |
+        docker stop interpreter-container || true
+        docker rm interpreter-container || true 

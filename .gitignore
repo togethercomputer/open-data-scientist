@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+submissions/*
+remove/*
+eval/kaggle_data/*.zip
+eval/kaggle_data/*.csv
+eval/kaggle_data/spooky/*.zip
+eval/kaggle_data/spooky/*.csv
+eval/kaggle_data/jigsaw/*.zip
+eval/kaggle_data/jigsaw/*.csv
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environment
+venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
