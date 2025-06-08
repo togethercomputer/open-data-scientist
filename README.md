@@ -283,7 +283,6 @@ Both modes support automatic file discovery and upload:
 # - Text files (.txt) 
 # - JSON files (.json)
 # - Python files (.py)
-# - Excel files (.xlsx, .xls) - handled by pandas
 
 agent = ReActDataScienceAgent(
     executor="tci",  # or "internal"
