@@ -3,7 +3,9 @@ import io
 import os
 import tempfile
 import requests
+import asyncio
 from open_data_scientist.codeagent import ReActDataScienceAgent
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BASE_URL = "http://localhost:8123"
 
@@ -291,3 +293,233 @@ def test_end_to_end_agent_analysis():
         # Clean up temporary file
         if os.path.exists(temp_file_path):
             os.unlink(temp_file_path)
+
+
+async def test_concurrent_sessions_isolation():
+    """Test that 50 concurrent math operations across different sessions work correctly."""
+    
+    async def create_session_and_execute(session_number: int):
+        """Create a session and execute a unique math operation."""
+        async with httpx.AsyncClient() as client:
+            # Create session
+            session_response = await client.post(f"{BASE_URL}/sessions")
+            assert session_response.status_code == 200
+            session_id = session_response.json()["session_id"]
+            
+            # Set a unique variable for this session
+            setup_code = f"base_value = {session_number}"
+            setup_response = await client.post(
+                f"{BASE_URL}/execute", 
+                json={"code": setup_code, "session_id": session_id}
+            )
+            assert setup_response.status_code == 200
+            assert setup_response.json()["success"]
+            
+            # Execute a math operation that depends on the variable
+            math_code = "result = base_value * 100 + base_value * 2"
+            math_response = await client.post(
+                f"{BASE_URL}/execute",
+                json={"code": math_code, "session_id": session_id}
+            )
+            assert math_response.status_code == 200
+            assert math_response.json()["success"]
+            
+            # Get the final result
+            result_response = await client.post(
+                f"{BASE_URL}/execute",
+                json={"code": "result", "session_id": session_id}
+            )
+            assert result_response.status_code == 200
+            assert result_response.json()["success"]
+            
+            result = result_response.json()["result"]
+            expected = session_number * 100 + session_number * 2  # session_number * 102
+            
+            return session_number, result, expected, session_id
+
+    # Run 50 concurrent operations
+    tasks = [create_session_and_execute(i) for i in range(1, 51)]
+    results = await asyncio.gather(*tasks)
+    
+    # Verify all results are correct
+    for session_number, actual_result, expected_result, session_id in results:
+        assert actual_result == expected_result, f"Session {session_number} (ID: {session_id}) got {actual_result}, expected {expected_result}"
+    
+    print(f"Successfully verified {len(results)} concurrent sessions with correct isolation")
+
+
+def test_concurrent_sessions_isolation_sync():
+    """Synchronous wrapper for the async concurrent test."""
+    asyncio.run(test_concurrent_sessions_isolation())
+
+
+def test_concurrent_sessions_isolation_threads():
+    """Test concurrent sessions using ThreadPoolExecutor instead of asyncio."""
+    
+    def create_session_and_execute(session_number: int):
+        """Create a session and execute a unique math operation using sync httpx."""
+        # Create session
+        session_response = httpx.post(f"{BASE_URL}/sessions")
+        assert session_response.status_code == 200
+        session_id = session_response.json()["session_id"]
+        
+        # Set a unique variable for this session
+        setup_code = f"base_value = {session_number}"
+        setup_response = httpx.post(
+            f"{BASE_URL}/execute", 
+            json={"code": setup_code, "session_id": session_id}
+        )
+        assert setup_response.status_code == 200
+        assert setup_response.json()["success"]
+        
+        # Execute a math operation that depends on the variable
+        math_code = "result = base_value * 100 + base_value * 2"
+        math_response = httpx.post(
+            f"{BASE_URL}/execute",
+            json={"code": math_code, "session_id": session_id}
+        )
+        assert math_response.status_code == 200
+        assert math_response.json()["success"]
+        
+        # Get the final result
+        result_response = httpx.post(
+            f"{BASE_URL}/execute",
+            json={"code": "result", "session_id": session_id}
+        )
+        assert result_response.status_code == 200
+        assert result_response.json()["success"]
+        
+        result = result_response.json()["result"]
+        expected = session_number * 100 + session_number * 2  # session_number * 102
+        
+        return session_number, result, expected, session_id
+
+    # Run 50 concurrent operations using ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        # Submit all tasks
+        future_to_session = {
+            executor.submit(create_session_and_execute, i): i 
+            for i in range(1, 51)
+        }
+        
+        results = []
+        # Collect results as they complete
+        for future in as_completed(future_to_session):
+            session_number = future_to_session[future]
+            try:
+                result = future.result()
+                results.append(result)
+            except Exception as e:
+                print(f"Session {session_number} generated an exception: {e}")
+                raise
+    
+    # Verify all results are correct
+    for session_number, actual_result, expected_result, session_id in results:
+        assert actual_result == expected_result, f"Session {session_number} (ID: {session_id}) got {actual_result}, expected {expected_result}"
+    
+    print(f"Successfully verified {len(results)} concurrent sessions with ThreadPoolExecutor")
+
+
+def test_session_large_data_isolation():
+    """Test that large data structures in one session don't affect others."""
+    session1_response = httpx.post(f"{BASE_URL}/sessions")
+    session1_id = session1_response.json()["session_id"]
+    
+    session2_response = httpx.post(f"{BASE_URL}/sessions")
+    session2_id = session2_response.json()["session_id"]
+    
+    # Create a large data structure in session 1
+    large_data_code = """
+import numpy as np
+large_array = np.random.random((1000, 1000))
+large_list = list(range(100000))
+memory_hog = {'data': large_array, 'list': large_list}
+small_value = 123
+print(f"Session 1 setup complete, small_value = {small_value}")
+"""
+    
+    response1 = httpx.post(
+        f"{BASE_URL}/execute",
+        json={"code": large_data_code, "session_id": session1_id}
+    )
+    assert response1.json()["success"]
+    assert "small_value = 123" in response1.json()["result"]
+    
+    # Session 2 should work normally and not be affected by session 1's memory usage
+    response2 = httpx.post(
+        f"{BASE_URL}/execute",
+        json={"code": "simple_var = 456\nprint(f'Session 2 value: {simple_var}')", "session_id": session2_id}
+    )
+    assert response2.json()["success"]
+    assert "Session 2 value: 456" in response2.json()["result"]
+    
+    # Verify session 1 can still access its data
+    response1_check = httpx.post(
+        f"{BASE_URL}/execute",
+        json={"code": "print(f'Session 1 small_value: {small_value}')", "session_id": session1_id}
+    )
+    assert response1_check.json()["success"]
+    assert "Session 1 small_value: 123" in response1_check.json()["result"]
+
+
+def test_session_file_operations_isolation():
+    """Test that file operations in different sessions don't interfere."""
+    session1_response = httpx.post(f"{BASE_URL}/sessions")
+    session1_id = session1_response.json()["session_id"]
+    
+    session2_response = httpx.post(f"{BASE_URL}/sessions")
+    session2_id = session2_response.json()["session_id"]
+    
+    # Session 1 creates a file
+    file1_code = """
+with open('session1_file.txt', 'w') as f:
+    f.write('Session 1 data')
+print('Session 1 file created')
+"""
+    response1 = httpx.post(
+        f"{BASE_URL}/execute",
+        json={"code": file1_code, "session_id": session1_id}
+    )
+    assert response1.json()["success"]
+    assert "Session 1 file created" in response1.json()["result"]
+    
+    # Session 2 creates a different file
+    file2_code = """
+with open('session2_file.txt', 'w') as f:
+    f.write('Session 2 data')
+print('Session 2 file created')
+"""
+    response2 = httpx.post(
+        f"{BASE_URL}/execute",
+        json={"code": file2_code, "session_id": session2_id}
+    )
+    assert response2.json()["success"]
+    assert "Session 2 file created" in response2.json()["result"]
+    
+    # Both sessions should be able to read their own files
+    read1_code = """
+with open('session1_file.txt', 'r') as f:
+    content = f.read()
+print(f'Session 1 file content: {content}')
+"""
+    read1_response = httpx.post(
+        f"{BASE_URL}/execute",
+        json={"code": read1_code, "session_id": session1_id}
+    )
+    assert read1_response.json()["success"]
+    assert "Session 1 file content: Session 1 data" in read1_response.json()["result"]
+    
+    read2_code = """
+with open('session2_file.txt', 'r') as f:
+    content = f.read()
+print(f'Session 2 file content: {content}')
+"""
+    read2_response = httpx.post(
+        f"{BASE_URL}/execute",
+        json={"code": read2_code, "session_id": session2_id}
+    )
+    assert read2_response.json()["success"]
+    assert "Session 2 file content: Session 2 data" in read2_response.json()["result"]
+
+
+

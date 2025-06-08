@@ -50,7 +50,7 @@ The ReAct agent supports two execution modes for running Python code:
 | **Setup Required** | API key only | Docker + docker-compose |
 | **File Handling** | ☁️ Files uploaded to cloud | 🏠 Files stay local |
 | **Session Persistence** | ✅ Managed by Together | ✅ Local session management |
-| **Session Isolation** | ✅ Independent isolated sessions | ⚠️ Shared filesystem across sessions |
+| **Session Isolation** | ✅ Independent isolated sessions | ⚠️ Limited isolation (see below) |
 | **Concurrent Usage** | ✅ Multiple users/processes safely | ⚠️ File conflicts possible |
 | **Dependencies** | Pre-installed environment | Custom Docker environment |
 | **Plot Saving** | ✅ Can save created plots to disk | ❌ Plots not saved to disk |
@@ -60,6 +60,44 @@ The ReAct agent supports two execution modes for running Python code:
 **TCI Mode**: Using TCI will upload your files to Together AI's cloud servers. Only use this mode if you're comfortable with your data being processed in the cloud.
 
 **Docker Mode**: All code execution and file processing happens locally in your Docker container.
+
+## ⚠️ Docker Mode Session Isolation Limitations
+
+**Important**: While Docker mode provides basic session isolation for variables, it has significant limitations:
+
+### ✅ What IS Isolated:
+- **User variables**: `x = 1` in one session won't affect another session
+- **Session state**: Each session maintains its own execution context
+
+### ❌ What is NOT Isolated:
+- **Module modifications**: Changes to imported libraries affect ALL sessions
+- **Global state changes**: Modifications to `sys.path`, `os.environ`, etc. are shared
+- **Library monkey-patching**: Modifying `json.dumps`, `numpy` settings, etc. corrupts other sessions
+
+### Examples of Problematic Code:
+```python
+# These operations will affect ALL sessions:
+import json
+json.dumps = custom_function  # ❌ Breaks all sessions
+
+import sys
+sys.path.append('/custom/path')  # ❌ Affects all sessions
+
+import os
+os.environ['KEY'] = 'value'  # ❌ Global environment change
+```
+
+### Docker Mode is OK For:
+- **Data analysis workflows**: Reading CSV/JSON files, pandas operations, statistical analysis
+- **Machine learning**: Training models, feature engineering, model evaluation
+- **Visualization**: Creating plots with matplotlib, seaborn, plotly
+- **Standard data science**: EDA, data cleaning, hypothesis testing
+- **Single-user development** and **testing environments**
+
+### When to Use TCI Mode Instead:
+- **Multi-user environments** where sessions must be completely isolated
+- **Production applications** with concurrent users
+- **Workflows that modify global state** (if unavoidable)
 
 ## 🛠️ Usage
 
