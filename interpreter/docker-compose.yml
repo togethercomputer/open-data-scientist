@@ -6,7 +6,7 @@ services:
     environment:
       - PYTHONPATH=/app
     volumes:
-      - ../eval/kaggle_data/spooky:/app/spooky:rw
+      - ../eval/kaggle_data/spooky:/app/spooky:rw # should only have rw access to the two folders from mlebench here. probably not the greatest thing to have "../" in it.
       - ../eval/kaggle_data/jigsaw:/app/jigsaw:rw
     restart: unless-stopped
     healthcheck:

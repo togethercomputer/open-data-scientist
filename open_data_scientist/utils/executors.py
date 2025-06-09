@@ -47,11 +47,7 @@ def collect_files(directory) -> list[Dict[str, str]]:
                         }
                     )
                 elif file_path.suffix.lower() in [".xlsx", ".xls"]:
-                    # For Excel files, we'll let pandas handle them in the code
-                    # TODO: this is sus?
-                    print(
-                        f"Excel file detected: {file_path.name} - will be handled by pandas"
-                    )
+                    print(f"Not uploading excel files")
 
             except (UnicodeDecodeError, PermissionError) as e:
                 print(f"Could not read file {file_path}: {e}")

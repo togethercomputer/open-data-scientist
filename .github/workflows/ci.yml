@@ -20,7 +20,7 @@ jobs:
     - name: Install test dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest httpx requests
+        pip install pytest pytest-asyncio httpx requests
         pip install -e .
 
     - name: Build Docker image
@@ -42,8 +42,9 @@ jobs:
         TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
       run: |
         python -m pytest tests/test_functional.py -v
-        python -m pytest tests/test_executors.py -v
         python -m pytest tests/test_agent_data_analysis.py -v
+        python -m pytest tests/test_variable_isolation.py -v
+        python -m pytest tests/test_executors.py -v
 
     - name: Stop container
       if: always()

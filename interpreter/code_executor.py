@@ -58,6 +58,8 @@ class CodeExecutor:
                 "os": os,
                 "open": open,
                 "__import__": __import__,
+                "__build_class__": __build_class__,
+                "__name__": "__main__",
             },
             "pd": pd,
             "pandas": pd,
