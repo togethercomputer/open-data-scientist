@@ -1,4 +1,5 @@
 import re
+import sys
 from typing import Callable, Optional
 
 from rich.console import Console
@@ -20,6 +21,10 @@ console = Console()
 reasoning_model = "deepseek-ai/DeepSeek-V3"
 max_iterations = 20
 temperature = 0.1
+
+
+class SessionSwapError(Exception):
+    pass
 
 
 class ReActDataScienceAgent:
@@ -166,7 +171,7 @@ class ReActDataScienceAgent:
                 if execution_result and "session_id" in execution_result:
                     new_session_id = execution_result["session_id"]
                     if self.session_id is not None and new_session_id != self.session_id:
-                        raise ValueError("Session ID changed unexpectedly")
+                        raise SessionSwapError("Session ID changed unexpectedly")
                     self.session_id = new_session_id
 
                 # Display results
@@ -190,6 +195,12 @@ class ReActDataScienceAgent:
                 current_iteration += 1
                 console.print(Rule(style="dim"))
 
+            except SessionSwapError as e:
+                console.print(
+                    f"💀 [bold red]FATAL ERROR: Session ID changed unexpectedly! This is often due to long running tasks.[/bold red] {str(e)}"
+                )
+                console.print("[bold red]Killing the program to prevent data corruption.[/bold red]")
+                sys.exit(1)
             except Exception as e:
                 console.print(
                     f"❌ [bold red]Error in iteration {current_iteration + 1}:[/bold red] {str(e)}"
