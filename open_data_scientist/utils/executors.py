@@ -142,6 +142,9 @@ def execute_code_internal(
     outputs_list: list[dict[str, Any]] = []
     errors_list: list[str] = []
 
+    # NOTE: that here i am trying to reconstruct the output of TCI, but it is not perfect.
+    # Seems to work for most cases, but not all.
+
     if raw_response.get("success"):
         execution_summary_input["status"] = "success"
         result_data = raw_response.get("result")
