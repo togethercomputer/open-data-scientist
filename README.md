@@ -72,43 +72,15 @@ The ReAct agent supports two execution modes for running Python code:
 
 **Docker Mode**: All code execution and file processing happens locally in your Docker container.
 
-## ⚠️ Docker Mode Session Isolation Limitations
+## ⚠️ Docker Mode Limitations
 
-**Important**: While Docker mode provides basic session isolation for variables, it has significant limitations:
+**Important**: Docker mode has session isolation limitations and security considerations for local development.
 
-### ✅ What IS Isolated:
-- **User variables**: `x = 1` in one session won't affect another session
-- **Session state**: Each session maintains its own execution context
+- **Session isolation**: While user variables are isolated between sessions, module modifications and global state changes affect all sessions
+- **Host directory access**: The container has read-write access to specific host directories
+- **Best for**: Single-user local development and data analysis workflows
 
-### ❌ What is NOT Isolated:
-- **Module modifications**: Changes to imported libraries affect ALL sessions
-- **Global state changes**: Modifications to `sys.path`, `os.environ`, etc. are shared
-- **Library monkey-patching**: Modifying `json.dumps`, `numpy` settings, etc. corrupts other sessions
-
-### Examples of Problematic Code:
-```python
-# These operations will affect ALL sessions:
-import json
-json.dumps = custom_function  # ❌ Breaks all sessions
-
-import sys
-sys.path.append('/custom/path')  # ❌ Affects all sessions
-
-import os
-os.environ['KEY'] = 'value'  # ❌ Global environment change
-```
-
-### Docker Mode is OK For:
-- **Data analysis workflows**: Reading CSV/JSON files, pandas operations, statistical analysis
-- **Machine learning**: Training models, feature engineering, model evaluation
-- **Visualization**: Creating plots with matplotlib, seaborn, plotly
-- **Standard data science**: EDA, data cleaning, hypothesis testing
-- **Single-user development** and **testing environments**
-
-### When to Use TCI Mode Instead:
-- **Multi-user environments** where sessions must be completely isolated
-- **Production applications** with concurrent users
-- **Workflows that modify global state** (if unavoidable)
+📖 **For detailed technical information, security warnings, and setup instructions, see the [Interpreter README](interpreter/README.md)**
 
 ## 🛠️ Usage
 
@@ -149,22 +121,6 @@ open-data-scientist --executor tci --model "meta-llama/Meta-Llama-3.1-405B-Instr
 - **No directory specified**: The CLI will show files in your current directory and ask if you want to upload them
 - **Directory specified**: Validates the path exists and uploads all supported file types
 - **Interactive confirmation**: Always asks before uploading files to ensure you know what's being shared
-
-#### Examples
-
-```bash
-# Quick start - analyze data in current folder
-open-data-scientist
-
-# Use cloud execution for better performance
-open-data-scientist --executor tci
-
-# Analyze specific dataset with custom settings
-open-data-scientist --data-dir ./sales_data --iterations 25 --model "deepseek-ai/DeepSeek-V3"
-
-# Continue previous session
-open-data-scientist --session-id "your-session-id"
-```
 
 ### 🐍 Python API
 
@@ -258,7 +214,7 @@ result = agent.run("""
 
 3. **Verify service is running:**
    ```bash
-   curl http://localhost:8000/health
+   curl http://localhost:8123/health
    ```
 
 4. **View logs (optional):**

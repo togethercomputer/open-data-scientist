@@ -15,7 +15,8 @@ scripts/*
 dist/
 build/
 *.egg-info/
-
+*.cast
+*.gif
 # Virtual environment
 venv/
 env/

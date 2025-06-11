@@ -4,6 +4,7 @@ import os
 import tempfile
 import requests
 import asyncio
+import pytest
 from open_data_scientist.codeagent import ReActDataScienceAgent
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -295,6 +296,7 @@ def test_end_to_end_agent_analysis():
             os.unlink(temp_file_path)
 
 
+@pytest.mark.asyncio
 async def test_concurrent_sessions_isolation():
     """Test that 50 concurrent math operations across different sessions work correctly."""
     
