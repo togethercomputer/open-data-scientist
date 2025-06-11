@@ -150,22 +150,6 @@ open-data-scientist --executor tci --model "meta-llama/Meta-Llama-3.1-405B-Instr
 - **Directory specified**: Validates the path exists and uploads all supported file types
 - **Interactive confirmation**: Always asks before uploading files to ensure you know what's being shared
 
-#### Examples
-
-```bash
-# Quick start - analyze data in current folder
-open-data-scientist
-
-# Use cloud execution for better performance
-open-data-scientist --executor tci
-
-# Analyze specific dataset with custom settings
-open-data-scientist --data-dir ./sales_data --iterations 25 --model "deepseek-ai/DeepSeek-V3"
-
-# Continue previous session
-open-data-scientist --session-id "your-session-id"
-```
-
 ### 🐍 Python API
 
 For programmatic usage, you can also use the Python API directly:
