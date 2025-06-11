@@ -301,7 +301,7 @@ def save_image_to_disk(b64_image, filename=None):
         console.print(f"[dim]💾 Image saved as: {filename}[/dim]")
         return filename
     except Exception as e:
-        console.print(f"[red]Error saving image: {e}[/red]")
+        console.print(f"⚠️ [yellow]Warning/Issue Detected - Error saving image: {e}[/yellow]")
         return None
 
 
@@ -322,11 +322,11 @@ def print_rich_execution_result(
     if parsed.has_errors:
         error_text = "\n".join(parsed.errors)
         if text_output:
-            text_output = f"{text_output}\n\n[bold red]Errors:[/bold red]\n{error_text}"
+            text_output = f"{text_output}\n\n⚠️ [bold yellow]Warning/Issue Detected:[/bold yellow]\n{error_text}"
         else:
-            text_output = f"[bold red]Error:[/bold red]\n{error_text}"
-        emoji = "❌"
-        border_style = "red"
+            text_output = f"⚠️ [bold yellow]Warning/Issue Detected:[/bold yellow]\n{error_text}"
+        emoji = "⚠️"
+        border_style = "yellow"
     else:
         # If we have images, mention them in the text
         if parsed.has_images:

@@ -77,9 +77,9 @@ class CodeExecutor:
             session.namespace.update(self.safe_builtins)
 
             original_cwd = os.getcwd()
+            os.chdir("/app/custom_data")
             try:
-                os.chdir("/app/custom_data")
-
+            
                 with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
                     result = eval(
                         compile(code, "<string>", "eval"),
