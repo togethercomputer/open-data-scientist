@@ -29,7 +29,7 @@ def get_data_directory(data_dir: Optional[str]) -> Optional[str]:
         current_dir = os.getcwd()
 
         console.print("\n[yellow]No data directory specified.[/yellow]")
-        console.print(f"[blue]Current directory:[/blue] {current_dir}")
+        console.print(f"[blue]Current directory:[/blue] {Path(current_dir).name}")
 
         # Show files in current directory
         files = list(Path(current_dir).iterdir())
@@ -187,7 +187,7 @@ Execution Modes:
 
     # Show configuration
     # Update args for display
-    args.data_dir = data_dir or "None (no files will be uploaded)"
+    args.data_dir = (Path(data_dir).name if data_dir else "None (no files will be uploaded)")
     show_configuration(args)
 
     # Ask for confirmation
@@ -198,7 +198,7 @@ Execution Modes:
     # Welcome message
     welcome_text = "🚀 Starting ReAct Data Science Agent"
     if data_dir:
-        welcome_text += f"\n📁 Data from: {data_dir}"
+        welcome_text += f"\n📁 Data from: {Path(data_dir).name}"
     welcome_text += f"\n🧠 Model: {args.model}"
     welcome_text += f"\n⚡ Executor: {args.executor.upper()}"
 
