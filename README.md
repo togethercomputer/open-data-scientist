@@ -242,7 +242,7 @@ result = agent.run("""
 
 3. **Verify service is running:**
    ```bash
-   curl http://localhost:8000/health
+   curl http://localhost:8123/health
    ```
 
 4. **View logs (optional):**
