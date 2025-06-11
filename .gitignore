@@ -10,7 +10,7 @@ eval/kaggle_data/spooky/*.zip
 eval/kaggle_data/spooky/*.csv
 eval/kaggle_data/jigsaw/*.zip
 eval/kaggle_data/jigsaw/*.csv
-
+scripts/*
 # Distribution / packaging
 dist/
 build/
