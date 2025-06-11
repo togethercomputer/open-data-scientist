@@ -23,7 +23,7 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir huggingface_hub
-RUN pip install --no-cache-dir sentence-transformers transformers torch
+RUN pip install --no-cache-dir sentence-transformers transformers torch accelerate
 
 # Copy the application code
 COPY . .
