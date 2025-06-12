@@ -33,8 +33,8 @@ PROMPT_TEMPLATE = {
         - Plots and visualizations are automatically displayed to the user
         - Build on previous successful steps rather than starting over
         - If you don't print outputs, you will not get a result.
-        - While you can generate plots and images, you cannot see them, you are not a vision model. Don't generate plots and images unless you are asked to.
-          Do not provide comments on the plots and images you generate, you are not a vision model.
+        - While you can generate plots and images, you cannot see them, you are not a vision model. Never generate plots and images unless you are asked to.
+        - Do not provide comments on the plots and images you generate in your final answer.
 
         WAIT FOR THE RESULT OF THE ACTION BEFORE PROCEEDING.
 

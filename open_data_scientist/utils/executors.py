@@ -6,11 +6,12 @@ from typing import Optional
 import os
 from pathlib import Path
 from typing import Dict
+import sys
 
-
-
+assert os.getenv("TOGETHER_API_KEY"), "TOGETHER_API_KEY environment variable must be set"
 client = Client()
 code_interpreter = client.code_interpreter
+
 
 
 def collect_files(directory) -> list[Dict[str, str]]:
@@ -100,6 +101,15 @@ def execute_code_factory(type: str):
     Factory function to create an executor function based on the type of code to execute.
     """
     if type == "internal":
+        # Check if the internal service is healthy before returning the executor
+        base_url = os.getenv("CODE_INTERPRETER_URL", "http://localhost:8123")
+        try:
+            health_response = requests.get(f"{base_url}/health", timeout=5)
+            if health_response.status_code != 200:
+                raise requests.exceptions.RequestException("Health check failed")
+        except requests.exceptions.RequestException:
+            print("No docker container available. Use the option '--executor tci' if you don't want to build the container.")
+            sys.exit(1)
         return execute_code_internal
     elif type == "tci":
         return execute_code_tci

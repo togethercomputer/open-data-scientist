@@ -54,7 +54,7 @@ def get_data_directory(data_dir: Optional[str]) -> Optional[str]:
             )
 
         use_current = Confirm.ask(
-            "\n[bold]Do you want to upload files from the current directory?[/bold]",
+            "\n[bold]Important: Do you want to upload files from the current directory?[/bold]",
             default=False,
         )
 
