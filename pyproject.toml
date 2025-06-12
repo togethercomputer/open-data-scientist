@@ -9,7 +9,7 @@ description = "ReAct Data Science Agent - AI-powered data analysis assistant"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
-    {name = "Federico Bianchi", email = "chiccobia@gmail.com"},
+    {name = "TogetherAI", email = "federico@together.ai"},
 ]
 keywords = ["data-science", "ai", "react", "analysis", "llm"]
 classifiers = [
