@@ -24,26 +24,17 @@ An AI-powered data analysis assistant that follows the ReAct (Reasoning + Acting
    export TOGETHER_API_KEY="your-api-key-here"
 
    # run the agent
-   open-data-scientist --executor tci
+   open-data-scientist --executor tci --write-report
    ```
 
 ## 📖 Example Output
 
-Our Open Data Scientist can perform comprehensive data analysis and generate detailed reports. Below is an example of a complete analysis report for molecular solubility prediction:
+Our Open Data Scientist can perform comprehensive data analysis and generate detailed reports. Below is an example of a complete analysis report for molecular solubility prediction (see [the example](examples/solubility_prediction/)):
 
 ### Report Example
 ![Solubility Prediction Report](examples/solubility_prediction/screenshots/report_title.png)
 
-The agent automatically analyzes data, builds models, and creates visualizations:
-
 ![Analysis Results](examples/solubility_prediction/screenshots/report_result.png)
-
-The report writing feature is currently only supported with TCI.
-
-   ```bash
-   # run the agent with tci and return report
-   open-data-scientist --executor tci --write-report
-   ```
 
 ## 🤖 Install from Source
 
