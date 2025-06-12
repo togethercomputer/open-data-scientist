@@ -27,6 +27,23 @@ An AI-powered data analysis assistant that follows the ReAct (Reasoning + Acting
    open-data-scientist --executor tci
    ```
 
+## 📖 Example Output
+
+Our Open Data Scientist can perform comprehensive data analysis and generate detailed reports. Below is an example of a complete analysis report for molecular solubility prediction:
+
+### Report Example
+![Solubility Prediction Report](examples/solubility_prediction/screenshots/report_title.png)
+
+The agent automatically analyzes data, builds models, and creates visualizations:
+
+![Analysis Results](examples/solubility_prediction/screenshots/report_result.png)
+
+The report writing feature is currently only supported with TCI.
+
+   ```bash
+   # run the agent with tci and return report
+   open-data-scientist --executor tci --write-report
+   ```
 
 ## 🤖 Install from Source
 
@@ -62,6 +79,7 @@ An AI-powered data analysis assistant that follows the ReAct (Reasoning + Acting
 
 #### (Optional, needed when using docker for code execution) Docker Mode Setup
 
+⚠️ Important: Docker mode has session isolation limitations and security considerations for local development. (1) Session isolation: While user variables are isolated between sessions, module modifications and global state changes affect all sessions. (2) Host directory access: The container has read-write access to specific host directories. (3)Best for: Single-user local development and data analysis workflows. For detailed technical information, security warnings, and setup instructions, see the [Interpreter README](interpreter/README.md).
 1. launch docker service:
    ```bash
    cd interpreter
@@ -72,6 +90,8 @@ An AI-powered data analysis assistant that follows the ReAct (Reasoning + Acting
    ```bash
    docker-compose down
    ```
+
+
  
 
 #### Usage
