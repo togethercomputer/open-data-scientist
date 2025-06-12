@@ -49,9 +49,9 @@ dev = [
 open-data-scientist = "open_data_scientist.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/open-data-scientist"
-Repository = "https://github.com/yourusername/open-data-scientist"
-Issues = "https://github.com/yourusername/open-data-scientist/issues"
+Homepage = "https://github.com/togethercomputer/open-data-scientist"
+Repository = "https://github.com/togethercomputer/open-data-scientist"
+Issues = "https://github.com/togethercomputer/open-data-scientist/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["open_data_scientist"]
