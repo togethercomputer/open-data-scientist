@@ -1,4 +1,3 @@
-
 ## 📊 Evaluation
 
 The ReAct Data Science Agent includes two comprehensive evaluation frameworks to test its capabilities on real-world data science tasks:
@@ -22,11 +21,11 @@ The DABstep evaluation requires no manual data setup - everything is handled aut
 cd eval
 python dabstep.py
 
-# Test with just the first few examples
-python dabstep.py --test-first-only
-
 # Skip hard difficulty questions
 python dabstep.py --skip-hard
+
+# Sample 30 easy and 30 hard tasks (mutually exclusive with --skip-hard)
+python dabstep.py --reduced-test
 
 # Submit results (creates submission file)
 python dabstep.py --submit --which-split dev
@@ -37,6 +36,7 @@ python dabstep.py --submit --which-split dev
 2. **Specialized prompts**: The agent receives detailed instructions about financial domain concepts from `manual.md`
 3. **Precise file paths**: Uses absolute paths like `/app/downloaded_data/data/context/payments.csv`
 4. **Domain validation**: Emphasizes reading domain manuals before analysis to ensure correct interpretations
+5. **Task sampling**: Supports either skipping hard tasks or sampling a balanced easy and hard tasks
 
 ### 🏆 Kaggle Competition Evaluation
 
