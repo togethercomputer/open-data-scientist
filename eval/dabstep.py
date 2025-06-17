@@ -3,8 +3,9 @@ import concurrent.futures
 import json
 from dataclasses import dataclass
 from pathlib import Path
+import random
 
-from datasets import load_dataset
+from datasets import load_dataset, concatenate_datasets
 from open_data_scientist.codeagent import ReActDataScienceAgent
 
 
@@ -150,12 +151,15 @@ def write_jsonl(data: list[dict], filepath: Path) -> None:
 
 
 def main(
-    test_first_only=False,
     submit=False,
     data_dir=None,
     which_split="dev",
     skip_hard=False,
+    reduced_test=False,
 ):
+    if skip_hard and reduced_test:
+        raise ValueError("Cannot use both --skip-hard and --reduced-test at the same time")
+
     # Load the dataset
     ds = load_dataset("adyen/DABstep", "tasks")
 
@@ -163,18 +167,33 @@ def main(
 
     # Store hard tasks before filtering if we're skipping and submitting
     skipped_tasks = []
-    if skip_hard and submit:
-        skipped_tasks = [task for task in dataset if task.get("level") == "hard"]
-
     if skip_hard:
+        skipped_tasks = [task for task in dataset if task.get("level") == "hard"]
         dataset = dataset.filter(lambda example: example.get("level") != "hard")
+    elif reduced_test:
+        dataset = dataset.shuffle(seed=42)
+        easy_tasks = dataset.filter(lambda x: x["level"] == "easy")
+        hard_tasks = dataset.filter(lambda x: x["level"] == "hard")
 
-    if test_first_only:
-        dataset = dataset.select([0, 1, 2])
+        # Sample 20 tasks from each difficulty level
+        sampled_easy = easy_tasks.select(range(20))  
+        sampled_hard = hard_tasks.select(range(20))  
+
+        sampled_ids = set()
+        for task in sampled_easy:
+            sampled_ids.add(task["task_id"])
+        for task in sampled_hard:
+            sampled_ids.add(task["task_id"])
+
+        skipped_tasks = [task for task in dataset if task["task_id"] not in sampled_ids]
+        dataset = concatenate_datasets([sampled_easy, sampled_hard])
+        dataset = dataset.shuffle(seed=42)
+    else:
+        print("Running all tasks")
 
     number_of_examples = len(dataset)
     results = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
         future_to_task = {
             executor.submit(process_task, task, submit, data_dir): task
             for task in dataset
@@ -223,9 +242,6 @@ def main(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run DABstep evaluation")
     parser.add_argument(
-        "--test-first-only", action="store_true", help="Test only the first example"
-    )
-    parser.add_argument(
         "--submit", action="store_true", help="Submit the results to the leaderboard"
     )
     parser.add_argument(
@@ -238,6 +254,9 @@ if __name__ == "__main__":
         "--skip-hard", action="store_true", help="Skip examples with level=hard"
     )
     parser.add_argument(
+        "--reduced-test", action="store_true", help="Sample 20 easy and 20 hard tasks"
+    )
+    parser.add_argument(
         "--data-dir",
         default=None,
         help="Directory containing data files to upload to the agent session",
@@ -245,9 +264,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(
-        test_first_only=args.test_first_only,
         submit=args.submit,
         data_dir=args.data_dir,
         which_split=args.which_split,
         skip_hard=args.skip_hard,
+        reduced_test=args.reduced_test,
     )
