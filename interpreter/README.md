@@ -16,7 +16,7 @@ A containerized Python code execution service that provides an API for running P
 
 2. **Verify it's running:**
    ```bash
-   curl http://localhost:8000/health
+   curl http://localhost:8123/health
    ```
 
 3. **Stop the service:**

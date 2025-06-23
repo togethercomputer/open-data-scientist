@@ -92,6 +92,7 @@ print(f"\nFirst few rows:\n{df.head()}")
 
 """,
 
+
 "REPORT_WRITER": """
         You are an expert data science report writer that creates comprehensive, professional reports from analysis traces.
         
