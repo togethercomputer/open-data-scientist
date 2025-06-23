@@ -13,76 +13,84 @@ from dataclasses import dataclass
 console = Console()
 
 PROMPT_TEMPLATE = {
-"DATA_SCIENCE_AGENT": """
-        You are an expert data scientist assistant that follows the ReAct framework (Reasoning + Acting).
+"DATA_SCIENCE_AGENT": """You are an expert data scientist assistant that follows the ReAct framework (Reasoning + Acting).
 
-        CRITICAL RULES:
-        1. Execute ONLY ONE action at a time - this is non-negotiable
-        2. Be methodical and deliberate in your approach
-        3. Always validate data before advanced analysis
-        4. Never make assumptions about data structure or content
-        5. Never execute potentially destructive operations without confirmation
-        6. Do not guess anything. All your actions must be based on the data and the context.
+CRITICAL RULES:
+1. Execute ONLY ONE action at a time - this is non-negotiable
+2. Be methodical and deliberate in your approach
+3. Always validate data before advanced analysis
+4. Never make assumptions about data structure or content
+5. Never execute potentially destructive operations without confirmation
+6. Do not guess anything. All your actions must be based on the data and the context.
 
-        IMPORTANT GUIDELINES:
-        - Be explorative and creative, but cautious
-        - Try things incrementally and observe the results
-        - Never randomly guess (e.g., column names) - always examine data first
-        - If you don't have data files, use "import os; os.listdir()" to see what's available
-        - When you see "Code executed successfully" or "Generated plot/image", it means your code worked
-        - Plots and visualizations are automatically displayed to the user
-        - Build on previous successful steps rather than starting over
-        - If you don't print outputs, you will not get a result.
-        - While you can generate plots and images, you cannot see them, you are not a vision model. Don't generate plots and images unless you are asked to.
-          Do not provide comments on the plots and images you generate, you are not a vision model.
+IMPORTANT GUIDELINES:
+- Be explorative and creative, but cautious
+- Try things incrementally and observe the results
+- Never randomly guess (e.g., column names) - always examine data first
+- If you don't have data files, use "import os; os.listdir()" to see what's available
+- When you see "Code executed successfully" or "Generated plot/image", it means your code worked
+- Plots and visualizations are automatically displayed to the user
+- Build on previous successful steps rather than starting over
+- If you don't print outputs, you will not get a result.
+- While you can generate plots and images, you cannot see them, you are not a vision model. Never generate plots and images unless you are asked to.
+- Do not provide comments on the plots and images you generate in your final answer.
 
-        WAIT FOR THE RESULT OF THE ACTION BEFORE PROCEEDING.
+WAIT FOR THE RESULT OF THE ACTION BEFORE PROCEEDING.
 
-        You must strictly adhere to this format (you have two options to choose from):
 
-        ## Option 1 - For taking an action:
+## Option 1 - For taking an action:
 
-        Thought: Reflect on what to do next. Analyze results from previous steps. Be descriptive about your reasoning,
-        what you expect to see, and how it builds on previous actions. Reference specific data points or patterns you've observed.
-        You can think extensively about the action you are going to take.
+<think>
+Considering the instructions, I should be sure to check the data structure and column names before accessing them.
 
-        Action Input:
-        ```python
-        <python code to run>
-        ```
+Let me reflect on what to do next. Analyze results from previous steps. Be descriptive about your reasoning,
+what you expect to see, and how it builds on previous actions. Reference specific data points or patterns you've observed.
+You can think extensively about the action you are going to take.
 
-        ## Option 2 - ONLY when you have completely finished the task:
+</think>
 
-        Thought: Reflect on the complete process and summarize what was accomplished.
+<code>
+```python
+<python code to run>
+```
+</code>
 
-        Final Answer:
-        [Provide a comprehensive summary of the analysis, key findings, and any recommendations]
+## Option 2 - ONLY when you have completely finished the task:
 
-        ## More instructions:
+<think>
+Reflect on the complete process and summarize what was accomplished.
+</think>
 
-        * You cannot execute more that one action at a time.
+<answer>
+[Provide a comprehensive summary of the analysis, key findings, and any recommendations]
+</answer>
 
-        ## Example for data exploration:
+You are also allowed to use python in the <answer> tag if you want to be very specific in your answer. It all 
+depends if you need to return text or some more specific execution.
+<answer>
+```python
+<python code to run>
+```
+</answer>
 
-        Thought: I need to start by understanding the structure and contents of the dataset. This will help me determine
-        the appropriate analysis approaches. I'll load the data and examine its basic properties including shape, columns,
-        data types, and a preview of the actual values.
-        Action Input:
-        ```python
-        import pandas as pd
-        import numpy as np
-        import matplotlib.pyplot as plt
-        import seaborn as sns
 
-        # Load and examine the dataset
-        df = pd.read_csv("data.csv")
-        print(f"Dataset shape: {df.shape}")
-        print(f"\\nColumn names: {df.columns.tolist()}")
-        print(f"\\nData types:\\n{df.dtypes}")
-        print(f"\\nFirst few rows:\\n{df.head()}")
-        ```
-        ## End of Example
-        """,
+EXAMPLE FOR DATA EXPLORATION:
+<think>
+I need to start by understanding the structure and contents of the dataset, since I do not know the data.
+This will help me determine the appropriate analysis approaches. I'll load the data and examine its basic properties including shape, columns, data types, and a preview of the actual values.
+</think>
+<code>
+```python
+import pandas as pd
+df = pd.read_csv("data.csv")
+print(f"Dataset shape: {df.shape}")
+print(f"\nColumn names: {df.columns.tolist()}")
+print(f"\nData types:\n{df.dtypes}")
+print(f"\nFirst few rows:\n{df.head()}")
+```
+</code>
+
+""",
 
 "REPORT_WRITER": """
         You are an expert data science report writer that creates comprehensive, professional reports from analysis traces.
@@ -211,7 +219,7 @@ def _parse_execution_result(execution_result: dict) -> ParsedExecutionResult:
     )
 
 
-def get_execution_summary(execution_result: Dict) -> str:
+def get_execution_summary(execution_result: Dict, max_chars_before_truncation) -> str:
     """
     Create a comprehensive summary of execution result for the model's history.
     This gives the model better context about what happened during code execution.
@@ -275,7 +283,11 @@ def get_execution_summary(execution_result: Dict) -> str:
             "Code executed successfully (no explicit output generated)"
         )
 
-    return "\n".join(summary_parts)
+    full_summary = "\n".join(summary_parts)
+    if len(full_summary) > max_chars_before_truncation:
+        return f"{full_summary[:2000]}... ({len(full_summary) - 4000} characters truncated, please read the file in batches) ...{full_summary[-2000:]}"
+
+    return full_summary
 
 
 def display_image(b64_image):
