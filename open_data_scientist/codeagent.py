@@ -1,6 +1,8 @@
 import re
 import sys
 from typing import Callable, Optional
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from together import Client
 
 from rich.console import Console
 from rich.panel import Panel
@@ -14,17 +16,19 @@ from open_data_scientist.utils.executors import (
 )
 from open_data_scientist.utils.strings import print_rich_execution_result
 
-from together import Client
-
 console = Console()
 
+# TODO: make these into a config file
 reasoning_model = "deepseek-ai/DeepSeek-V3"
 max_iterations = 20
 temperature = 0.1
+max_chars_before_truncation = 40000
+max_tokens = 20000
 
 
 class SessionSwapError(Exception):
     pass
+
 
 
 class ReActDataScienceAgent:
@@ -55,13 +59,33 @@ class ReActDataScienceAgent:
 
         self.executor: Callable = execute_code_factory(executor)
 
+    def final_anwer_execution(self, final_answer: str, session_id: str | None):
+        """Execute all Python code blocks in the final answer and replace them with their results"""
+        code_blocks = re.finditer(r"```python\n(.*?)\n```", final_answer, re.DOTALL)
+        
+        for match in code_blocks:
+            code = match.group(1)
+            result = self.executor(code, session_id)
+            
+            execution_summary = get_execution_summary(result, max_chars_before_truncation)
+            
+            final_answer = final_answer.replace(match.group(0), execution_summary)
+            
+        return final_answer
+
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+    )
     def llm_call(self) -> str:
-        """Make a call to the language model"""
+        """Make a call to the language model with retry logic"""
         response = self.client.chat.completions.create(
             model=self.model,
             messages=self.history,
             temperature=temperature,
-            max_tokens=20000,
+            max_tokens=max_tokens,
+            timeout=120,
             stream=False,
         )
         return response.choices[0].message.content  # type: ignore
@@ -70,41 +94,32 @@ class ReActDataScienceAgent:
         """Parse the LLM response and extract thought and action input"""
         response = self.llm_call()
 
-        if "Action Input:" in response:
-            if "Thought:" in response:
-                thought = (
-                    response.split("Thought:")[1].split("Action Input:")[0].strip()
-                )
-            else:
-                thought = "The assistant didn't provide a proper thought section."
+        # Try to find code block - either direct content or markdown inside <code>
+        code_match = re.search(r"<code>(.*?)</code>", response, re.DOTALL)
+        if code_match:
+            code_content = code_match.group(1).strip()
+            # Check if the content inside <code> is a markdown block
+            markdown_match = re.search(r"```(?:python)?\s*(.*?)\s*```", code_content, re.DOTALL)
+            action_input = markdown_match.group(1).strip() if markdown_match else code_content
+            
+            # Try to find thought
+            thought_match = re.search(r"<think>(.*?)</think>", response, re.DOTALL)
+            thought = thought_match.group(1).strip() if thought_match else "The assistant didn't provide a proper thought section."
+            
+            return thought, action_input
 
-            action_input_section = response.split("Action Input:")[1]
-            code_match = re.search(
-                r"```(?:python)?\s*(.*?)\s*```", action_input_section, re.DOTALL
-            )
-
-            if code_match:
-                action_input = code_match.group(1).strip()
-                return thought, action_input
-            else:
-                console.print(
-                    f"[bold red]ERROR:[/bold red] No code block found after Action Input:\n{response}"
-                )
-                action_input = "print('Error: No code block found after Action Input')"
-                return thought, action_input
-
-        if "Final Answer:" in response:
-            final_answer = response.split("Final Answer:")[1].strip()
+        # Try to find final answer
+        answer_match = re.search(r"<answer>(.*?)</answer>", response, re.DOTALL)
+        if answer_match:
+            final_answer = answer_match.group(1).strip()
             return final_answer, None
 
         console.print(
-            f"[bold red]ERROR:[/bold red] No Action Input or Final Answer found in response:\n{response}"
+            f"[bold red]ERROR:[/bold red] No valid tags found in response:\n{response}"
         )
-        thought = "The assistant didn't follow the ReAct format properly."
-        action_input = "print('Error: Format not followed by the assistant, please follow the format and try again. You need to use one of the two options: Action Input or Final Answer.')"
+        thought = "I need to be careful with the format in the response"
+        action_input = "print('Error: Format not followed by the assistant, please use <think>, <code>, or <answer> tags.')"
         return thought, action_input
-    
-
 
     def run(self, user_input: str):
         """Execute the main ReAct reasoning and acting loop"""
@@ -129,7 +144,11 @@ class ReActDataScienceAgent:
                 result, action_input = self.parse_response()
 
                 if action_input is None:
-                    # Final answer panel
+                    result = self.final_anwer_execution(result, self.session_id)
+                    
+                    # Add final answer to history
+                    self.history.append({"role": "assistant", "content": f"<answer>\n{result}\n</answer>"})
+                    
                     final_panel = Panel(
                         result,
                         title="🎯 Final Answer",
@@ -138,6 +157,7 @@ class ReActDataScienceAgent:
                         width=80,
                     )
                     console.print(final_panel)
+                    # TODO this is ugly, we should have a better way to handle this
                     break
 
                 thought = result
@@ -180,12 +200,12 @@ class ReActDataScienceAgent:
                 )
 
                 # Get summary for agent's history
-                execution_summary = get_execution_summary(execution_result)
+                execution_summary = get_execution_summary(execution_result, max_chars_before_truncation)
 
                 # Add to conversation history. We use the "user" role for the observation content.
                 # You could alos use other tools.
                 add_to_history = (
-                    f"Thought: {thought}\nAction Input:```python\n{action_input}\n```"
+                    f"<think>\n{thought}\n</think>\n<code>\n```python\n{action_input}\n```\n</code>"
                 )
                 self.history.append({"role": "assistant", "content": add_to_history})
                 self.history.append(
