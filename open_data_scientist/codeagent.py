@@ -18,10 +18,12 @@ from open_data_scientist.utils.strings import print_rich_execution_result
 
 console = Console()
 
+# TODO: make these into a config file
 reasoning_model = "deepseek-ai/DeepSeek-V3"
 max_iterations = 20
 temperature = 0.1
 max_chars_before_truncation = 40000
+max_tokens = 20000
 
 
 class SessionSwapError(Exception):
@@ -82,7 +84,7 @@ class ReActDataScienceAgent:
             model=self.model,
             messages=self.history,
             temperature=temperature,
-            max_tokens=5000,
+            max_tokens=max_tokens,
             timeout=120,
             stream=False,
         )
@@ -142,7 +144,6 @@ class ReActDataScienceAgent:
                 result, action_input = self.parse_response()
 
                 if action_input is None:
-                    print(f"Final answer: {result}")
                     result = self.final_anwer_execution(result, self.session_id)
                     
                     # Add final answer to history
@@ -156,6 +157,7 @@ class ReActDataScienceAgent:
                         width=80,
                     )
                     console.print(final_panel)
+                    # TODO this is ugly, we should have a better way to handle this
                     break
 
                 thought = result
