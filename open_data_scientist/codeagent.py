@@ -13,6 +13,7 @@ from open_data_scientist.utils.executors import (
     execute_code_factory,
     upload_file_internal,
     create_tci_session_with_data,
+    delete_session_internal,
 )
 from open_data_scientist.utils.strings import print_rich_execution_result
 
@@ -58,6 +59,14 @@ class ReActDataScienceAgent:
                 upload_file_internal(self.data_dir)
 
         self.executor: Callable = execute_code_factory(executor)
+
+    def __del__(self):
+        """Clean up session when object is deleted"""
+        if hasattr(self, 'session_id') and self.session_id:
+            try:
+                delete_session_internal(self.session_id)
+            except Exception:
+                pass
 
     def final_anwer_execution(self, final_answer: str, session_id: str | None):
         """Execute all Python code blocks in the final answer and replace them with their results"""
