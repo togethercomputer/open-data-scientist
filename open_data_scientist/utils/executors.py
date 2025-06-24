@@ -364,3 +364,34 @@ def upload_files_tci(
     except Exception as e:
         error_result = {"status": "error", "error_message": str(e), "session_id": None}
         return error_result
+
+
+def delete_session_internal(session_id: str) -> dict[str, Any]:
+    """
+    Delete a session from the interpreter service.
+
+    Args:
+        session_id: The session ID to delete
+
+    Returns:
+        A dictionary with deletion results including success status.
+    """
+    base_url = os.getenv("CODE_INTERPRETER_URL", "http://localhost:8123")
+    url = f"{base_url}/sessions/{session_id}"
+
+    try:
+        response = requests.delete(url)
+        response.raise_for_status()
+
+        return {
+            "success": True,
+            "message": "Session deleted successfully",
+            "session_id": session_id
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to delete session: {str(e)}",
+            "session_id": session_id
+        }
