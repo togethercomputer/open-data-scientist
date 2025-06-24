@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "open-data-scientist"
-version = "0.1.0"
+version = "0.1.0a2"
 description = "ReAct Data Science Agent - AI-powered data analysis assistant"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 authors = [
-    {name = "Your Name", email = "your.email@example.com"},
+    {name = "TogetherAI", email = ""},
 ]
 keywords = ["data-science", "ai", "react", "analysis", "llm"]
 classifiers = [
@@ -18,6 +18,8 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Information Analysis",
