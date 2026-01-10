@@ -6,6 +6,7 @@ Command Line Interface for the ReAct Data Science Agent
 import argparse
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from open_data_scientist.utils.writer import _write_report
@@ -103,6 +104,7 @@ def show_configuration(args) -> None:
     table.add_row(
         "Data Directory", args.data_dir or "Current directory (with confirmation)"
     )
+    table.add_row("Trace Log", args.trace_path or "Disabled")
 
     console.print(table)
     console.print()
@@ -172,6 +174,11 @@ Execution Modes:
         action="store_true",
         help="Write a report to a file (default: False)",
     )
+    parser.add_argument(
+        "--save-trace",
+        action="store_true",
+        help="Save query/execution trace as JSONL and a human-readable markdown log in the current directory",
+    )
 
     args = parser.parse_args()
 
@@ -185,9 +192,17 @@ Execution Modes:
     # Handle data directory
     data_dir = get_data_directory(args.data_dir)
 
+    trace_path = None
+    trace_base = None
+    if args.save_trace:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        trace_base = str(Path.cwd() / f"log-trace_{timestamp}")
+        trace_path = f"{trace_base}.jsonl"
+
     # Show configuration
     # Update args for display
     args.data_dir = (Path(data_dir).name if data_dir else "None (no files will be uploaded)")
+    args.trace_path = trace_base
     show_configuration(args)
 
     # Ask for confirmation
@@ -201,6 +216,8 @@ Execution Modes:
         welcome_text += f"\n📁 Data from: {Path(data_dir).name}"
     welcome_text += f"\n🧠 Model: {args.model}"
     welcome_text += f"\n⚡ Executor: {args.executor.upper()}"
+    if trace_base:
+        welcome_text += f"\nTrace Log: {Path(trace_base).name}"
 
     welcome_panel = Panel(
         welcome_text,
@@ -229,6 +246,7 @@ Execution Modes:
             max_iterations=args.iterations,
             executor=args.executor,
             data_dir=data_dir,
+            trace_path=trace_path,
         )
 
     except Exception as e:

@@ -257,9 +257,16 @@ def get_execution_summary(execution_result: Dict, max_chars_before_truncation) -
     # Add display outputs (plots, images) - include saved filenames
     if parsed.display_outputs:
         summary_parts.append("Visual outputs:")
-        for i, display_output in enumerate(parsed.display_outputs):
-            if display_output == "Generated plot/image" and i < len(saved_image_filenames):
-                summary_parts.append(f"{display_output} (saved as: {saved_image_filenames[i]})")
+        image_index = 0
+        for display_output in parsed.display_outputs:
+            if (
+                display_output == "Generated plot/image"
+                and image_index < len(saved_image_filenames)
+            ):
+                summary_parts.append(
+                    f"{display_output} (saved as: {saved_image_filenames[image_index]})"
+                )
+                image_index += 1
             else:
                 summary_parts.append(display_output)
 

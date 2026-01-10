@@ -1,5 +1,8 @@
+import json
 import re
 import sys
+from datetime import datetime
+from pathlib import Path
 from typing import Callable, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from together import Client
@@ -40,12 +43,16 @@ class ReActDataScienceAgent:
         max_iterations: int = max_iterations,
         executor: str = "internal",
         data_dir: Optional[str] = None,
+        trace_path: Optional[str] = None,
     ):
         self.client = Client()
         self.session_id = session_id
         self.model = model
         self.max_iterations = max_iterations
         self.data_dir = data_dir
+        self.executor_type = executor
+        self.trace_path = trace_path
+        self.log_path = self._derive_log_path(trace_path)
 
         self.system_prompt = PROMPT_TEMPLATE
 
@@ -67,6 +74,87 @@ class ReActDataScienceAgent:
                 delete_session_internal(self.session_id)
             except Exception:
                 pass
+
+    def _derive_log_path(self, trace_path: Optional[str]) -> Optional[str]:
+        if not trace_path:
+            return None
+        return str(Path(trace_path).with_suffix(".md"))
+
+    def _record_event(self, event: dict) -> None:
+        if not self.trace_path:
+            return
+        event.setdefault(
+            "timestamp",
+            datetime.now().isoformat(timespec="seconds"),
+        )
+        if self.trace_path:
+            with open(self.trace_path, "a", encoding="utf-8") as handle:
+                handle.write(json.dumps(event, ensure_ascii=True) + "\n")
+        if self.log_path is not None:
+            self._run_events.append(event)
+
+    def _extract_image_filenames(self, observation: str) -> list[str]:
+        """
+        Extract saved image filenames from observation text.
+        Observation strings include 'saved as: filename.png' when plots are saved.
+        """
+        return re.findall(r"saved as: ([\w._-]+\.png)", observation)
+
+    def _render_log(self) -> None:
+        if not self.log_path or not self._run_events:
+            return
+        log_file = Path(self.log_path)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        is_new_file = not log_file.exists() or log_file.stat().st_size == 0
+
+        with open(log_file, "a", encoding="utf-8") as handle:
+            if is_new_file:
+                handle.write("# ReAct Run Log\n\n")
+
+            for event in self._run_events:
+                event_type = event.get("type")
+                if event_type == "query":
+                    handle.write("\n## Query\n")
+                    handle.write(f"- Task: {event.get('query', '')}\n")
+                    handle.write(f"- Model: {event.get('model', '')}\n")
+                    handle.write(f"- Executor: {event.get('executor', '')}\n")
+                    handle.write(f"- Session: {event.get('session_id', 'None')}\n")
+                    handle.write(f"- Data directory: {event.get('data_dir', 'None')}\n")
+                    handle.write(f"- Started: {event.get('started_at', '')}\n\n")
+                elif event_type == "step":
+                    handle.write(f"### Step {event.get('iteration', '')}\n\n")
+                    handle.write("**Thought**\n")
+                    handle.write(f"{event.get('thought', '')}\n\n")
+                    handle.write("**Code**\n")
+                    handle.write(f"```python\n{event.get('code', '')}\n```\n\n")
+                    handle.write("**Observation**\n")
+                    handle.write(f"{event.get('observation', '')}\n\n")
+                    images = event.get("images", [])
+                    if images:
+                        handle.write("Images:\n")
+                        for image in images:
+                            handle.write(f"![{image}]({image})\n")
+                        handle.write("\n")
+                elif event_type == "error":
+                    handle.write(f"### Error at step {event.get('iteration', '')}\n\n")
+                    handle.write(f"{event.get('error', '')}\n\n")
+                elif event_type == "final_answer":
+                    handle.write("\n**Final Answer**\n\n")
+                    handle.write(f"{event.get('answer', '')}\n\n")
+                    images = event.get("images", [])
+                    if images:
+                        handle.write("Images:\n")
+                        for image in images:
+                            handle.write(f"![{image}]({image})\n")
+                        handle.write("\n")
+                elif event_type == "max_iterations":
+                    handle.write(
+                        f"WARNING: Maximum iterations reached ({event.get('max_iterations', '')})\n\n"
+                    )
+                    handle.write(f"{event.get('result', '')}\n\n")
+                elif event_type == "run_end":
+                    handle.write(f"Finished: {event.get('finished_at', '')}\n\n")
+                    handle.write("---\n\n")
 
     def final_anwer_execution(self, final_answer: str, session_id: str | None):
         """Execute all Python code blocks in the final answer and replace them with their results"""
@@ -135,6 +223,21 @@ class ReActDataScienceAgent:
         self.history.append({"role": "user", "content": user_input})
 
         current_iteration = 0
+        result = None
+        started_at = datetime.now().isoformat(timespec="seconds")
+        self._run_events = []
+
+        self._record_event(
+            {
+                "type": "query",
+                "query": user_input,
+                "model": self.model,
+                "executor": self.executor_type,
+                "session_id": self.session_id,
+                "data_dir": self.data_dir,
+                "started_at": started_at,
+            }
+        )
 
         # Rich startup display
         startup_text = f"🚀 Starting ReAct Data Science Agent\n📝 Task: {user_input}"
@@ -157,6 +260,16 @@ class ReActDataScienceAgent:
                     
                     # Add final answer to history
                     self.history.append({"role": "assistant", "content": f"<answer>\n{result}\n</answer>"})
+
+                    final_images = self._extract_image_filenames(result)
+                    self._record_event(
+                        {
+                            "type": "final_answer",
+                            "answer": result,
+                            "images": final_images,
+                            "session_id": self.session_id,
+                        }
+                    )
                     
                     final_panel = Panel(
                         result,
@@ -221,16 +334,46 @@ class ReActDataScienceAgent:
                     {"role": "user", "content": f"Observation: {execution_summary}"}
                 )
 
+                images = self._extract_image_filenames(execution_summary)
+                self._record_event(
+                    {
+                        "type": "step",
+                        "iteration": current_iteration + 1,
+                        "thought": thought,
+                        "code": action_input,
+                        "observation": execution_summary,
+                        "images": images,
+                        "session_id": self.session_id,
+                    }
+                )
+
                 current_iteration += 1
                 console.print(Rule(style="dim"))
 
             except SessionSwapError as e:
+                self._record_event(
+                    {
+                        "type": "error",
+                        "iteration": current_iteration + 1,
+                        "error": str(e),
+                        "session_id": self.session_id,
+                    }
+                )
+                self._render_log()
                 console.print(
                     f"💀 [bold red]FATAL ERROR: Session ID changed unexpectedly! This is often due to long running tasks.[/bold red] {str(e)}"
                 )
                 console.print("[bold red]Killing the program to prevent data corruption.[/bold red]")
                 sys.exit(1)
             except Exception as e:
+                self._record_event(
+                    {
+                        "type": "error",
+                        "iteration": current_iteration + 1,
+                        "error": str(e),
+                        "session_id": self.session_id,
+                    }
+                )
                 console.print(
                     f"❌ [bold red]Error in iteration {current_iteration + 1}:[/bold red] {str(e)}"
                 )
@@ -248,7 +391,24 @@ class ReActDataScienceAgent:
                 f"⚠️ [bold yellow]Maximum iterations ({self.max_iterations}) reached without completion[/bold yellow]"
             )
             result = result or "Task incomplete - maximum iterations reached"
-        
+            self._record_event(
+                {
+                    "type": "max_iterations",
+                    "max_iterations": self.max_iterations,
+                    "result": result,
+                    "session_id": self.session_id,
+                }
+            )
+        finished_at = datetime.now().isoformat(timespec="seconds")
+        self._record_event(
+            {
+                "type": "run_end",
+                "finished_at": finished_at,
+                "session_id": self.session_id,
+            }
+        )
+        self._render_log()
+
         return result
 
 

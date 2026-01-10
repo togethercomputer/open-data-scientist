@@ -32,7 +32,7 @@ def _write_report(user_input, result, history, model="deepseek-ai/DeepSeek-V3"):
     )
     output_report : str = response.choices[0].message.content  # type: ignore
 
-    report_name = f"{sanitize_filename(user_input)}.md"
+    report_name = f"report-{sanitize_filename(user_input)}.md"
     
     with open(report_name, "w") as f:
         f.write(output_report)
