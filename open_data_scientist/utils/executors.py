@@ -1,3 +1,4 @@
+import json
 import requests
 from typing import Any, Dict, Optional
 from together import Client
@@ -11,6 +12,48 @@ import sys
 assert os.getenv("TOGETHER_API_KEY"), "TOGETHER_API_KEY environment variable must be set"
 client = Client()
 code_interpreter = client.code_interpreter
+
+
+def _stringify_errors(errors: Any) -> list[str]:
+    """SDK v2 returns errors as a list of str or dict; downstream code joins them as text."""
+    if not errors:
+        return []
+    if isinstance(errors, (str, dict)):
+        errors = [errors]
+    return [e if isinstance(e, str) else json.dumps(e, default=str) for e in errors]
+
+
+def _format_tci_response(response: Any, session_id: Optional[str] = None) -> dict[str, Any]:
+    """Convert a Together Code Interpreter execute response into a plain dict."""
+    data = getattr(response, "data", None)
+    if data is None:
+        errors = _stringify_errors(getattr(response, "errors", None))
+        return {
+            "status": "error",
+            "error_message": "; ".join(errors) or "Execution failed",
+            "errors": errors,
+            "session_id": session_id,
+        }
+
+    result: dict[str, Any] = {
+        "session_id": data.session_id,
+        "status": data.status or "success",
+        "outputs": [],
+    }
+
+    for output in data.outputs:
+        output_data = output.data
+        if hasattr(output_data, "model_dump"):
+            output_data = output_data.model_dump(by_alias=True, exclude_none=True)
+        result["outputs"].append({"type": output.type, "data": output_data})
+
+    errors = _stringify_errors(
+        getattr(data, "errors", None) or getattr(response, "errors", None)
+    )
+    if errors:
+        result["errors"] = errors
+
+    return result
 
 
 
@@ -302,21 +345,8 @@ def execute_code_tci(
         if session_id:
             additional_args["session_id"] = session_id
 
-        response = code_interpreter.run(**additional_args)
-
-        result = {
-            "session_id": response.data.session_id,
-            "status": response.data.status,
-            "outputs": [],
-        }
-
-        for output in response.data.outputs:
-            result["outputs"].append({"type": output.type, "data": output.data})
-
-        if response.data.errors:
-            result["errors"] = response.data.errors
-
-        return result
+        response = code_interpreter.execute(**additional_args)
+        return _format_tci_response(response, session_id)
     except Exception as e:
         error_result = {"status": "error", "error_message": str(e), "session_id": None}
         return error_result
@@ -346,21 +376,8 @@ def upload_files_tci(
         if session_id:
             additional_args["session_id"] = session_id
 
-        response = code_interpreter.run(**additional_args)
-
-        result = {
-            "session_id": response.data.session_id,
-            "status": response.data.status,
-            "outputs": [],
-        }
-
-        for output in response.data.outputs:
-            result["outputs"].append({"type": output.type, "data": output.data})
-
-        if response.data.errors:
-            result["errors"] = response.data.errors
-
-        return result
+        response = code_interpreter.execute(**additional_args)
+        return _format_tci_response(response, session_id)
     except Exception as e:
         error_result = {"status": "error", "error_message": str(e), "session_id": None}
         return error_result
