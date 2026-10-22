@@ -1,3 +1,4 @@
+import json
 import requests
 from typing import Any, Dict, Optional
 from together import Client
@@ -13,14 +14,23 @@ client = Client()
 code_interpreter = client.code_interpreter
 
 
+def _stringify_errors(errors: Any) -> list[str]:
+    """SDK v2 returns errors as a list of str or dict; downstream code joins them as text."""
+    if not errors:
+        return []
+    if isinstance(errors, (str, dict)):
+        errors = [errors]
+    return [e if isinstance(e, str) else json.dumps(e, default=str) for e in errors]
+
+
 def _format_tci_response(response: Any, session_id: Optional[str] = None) -> dict[str, Any]:
     """Convert a Together Code Interpreter execute response into a plain dict."""
     data = getattr(response, "data", None)
     if data is None:
-        errors = getattr(response, "errors", None) or []
+        errors = _stringify_errors(getattr(response, "errors", None))
         return {
             "status": "error",
-            "error_message": "; ".join(str(e) for e in errors) or "Execution failed",
+            "error_message": "; ".join(errors) or "Execution failed",
             "errors": errors,
             "session_id": session_id,
         }
@@ -37,7 +47,9 @@ def _format_tci_response(response: Any, session_id: Optional[str] = None) -> dic
             output_data = output_data.model_dump(by_alias=True, exclude_none=True)
         result["outputs"].append({"type": output.type, "data": output_data})
 
-    errors = getattr(data, "errors", None) or getattr(response, "errors", None)
+    errors = _stringify_errors(
+        getattr(data, "errors", None) or getattr(response, "errors", None)
+    )
     if errors:
         result["errors"] = errors
 
