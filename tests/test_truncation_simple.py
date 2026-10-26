@@ -52,3 +52,24 @@ def test_truncation_with_errors():
     assert len(result) < len(long_error)
     assert "characters truncated" in result
     assert "Execution status: failed" in result 
+
+
+def test_truncation_respects_the_configured_limit():
+    """Head and tail together keep max_chars_before_truncation characters, and the count is exact."""
+    long_output = "x" * 2500
+
+    execution_result = {
+        "status": "success",
+        "outputs": [{"type": "stdout", "data": long_output}],
+    }
+
+    full_length = len(f"Execution status: success\nText output:\n{long_output}")
+    result = get_execution_summary(execution_result, max_chars_before_truncation=1000)
+
+    assert f"({full_length - 1000} characters truncated" in result
+    head, _, rest = result.partition("... (")
+    tail = rest.rpartition(") ...")[2]
+    assert len(head) + len(tail) == 1000
+
+    result = get_execution_summary(execution_result, max_chars_before_truncation=10_000)
+    assert "characters truncated" not in result

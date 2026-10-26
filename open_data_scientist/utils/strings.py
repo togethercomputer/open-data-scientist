@@ -293,7 +293,10 @@ def get_execution_summary(execution_result: Dict, max_chars_before_truncation) -
 
     full_summary = "\n".join(summary_parts)
     if len(full_summary) > max_chars_before_truncation:
-        return f"{full_summary[:2000]}... ({len(full_summary) - 4000} characters truncated, please read the file in batches) ...{full_summary[-2000:]}"
+        head = max_chars_before_truncation // 2
+        tail = max_chars_before_truncation - head
+        truncated = len(full_summary) - head - tail
+        return f"{full_summary[:head]}... ({truncated} characters truncated, please read the file in batches) ...{full_summary[len(full_summary) - tail:]}"
 
     return full_summary
 
